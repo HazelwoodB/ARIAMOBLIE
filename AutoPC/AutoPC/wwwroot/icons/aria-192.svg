@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#161633"/>
+      <stop offset="100%" stop-color="#0a0a0f"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- Background -->
+  <rect width="192" height="192" rx="40" fill="url(#bg)"/>
+  <!-- Outer ring -->
+  <circle cx="96" cy="96" r="70" fill="none" stroke="#00f0ff" stroke-width="2" opacity="0.4"/>
+  <!-- Inner ring -->
+  <circle cx="96" cy="96" r="50" fill="none" stroke="#00f0ff" stroke-width="1.5" opacity="0.25"/>
+  <!-- Diamond glyph -->
+  <polygon points="96,36 136,96 96,156 56,96" fill="none" stroke="#00f0ff" stroke-width="3" filter="url(#glow)"/>
+  <!-- Inner diamond -->
+  <polygon points="96,56 120,96 96,136 72,96" fill="#00f0ff" opacity="0.15"/>
+  <!-- Center dot -->
+  <circle cx="96" cy="96" r="6" fill="#00f0ff" filter="url(#glow)"/>
+  <!-- ARIA text -->
+  <text x="96" y="178" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="14" fill="#00f0ff" opacity="0.8">ARIA</text>
+</svg>

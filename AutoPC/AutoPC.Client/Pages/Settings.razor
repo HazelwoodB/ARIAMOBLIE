@@ -2,8 +2,11 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject PreferenceManager PreferenceManager
 @inject RetroThemeService ThemeService
+@inject ClientLLMService LLMService
 @inject NavigationManager Navigation
+@using AutoPC.Client.Services
 @using AutoPC.Client.Services.Foundation
+@using static AutoPC.Client.Services.ClientLLMService
 
 <PageTitle>ARIA Settings - Customize Your Experience</PageTitle>
 
@@ -89,6 +92,50 @@
                 </div>
             </div>
 
+            <!-- Connection Mode Section (PWA / Mobile) -->
+            <div class="settings-section">
+                <h3>📡 Connection Mode</h3>
+                <p class="section-description">Configure how ARIA connects to the AI backend. Use "Remote Server" when accessing from a phone or another device.</p>
+
+                <div class="setting-group">
+                    <label>Connection Mode:</label>
+                    <select @bind="selectedConnectionMode" class="retro-select">
+                        <option value="LocalProxy">Local (same machine as server)</option>
+                        <option value="RemoteServer">Remote Server (connect over network)</option>
+                        <option value="DirectOllama">Direct Ollama (advanced)</option>
+                    </select>
+                </div>
+
+                @if (selectedConnectionMode == "RemoteServer")
+                {
+                    <div class="setting-group">
+                        <label>Server URL:</label>
+                        <input type="text" @bind="remoteServerUrl" placeholder="https://your-tunnel-url.trycloudflare.com" class="retro-input" style="width: 100%;" />
+                        <p class="setting-hint">Enter the tunnel URL shown in the ARIA launcher (e.g., https://xxx.trycloudflare.com)</p>
+                    </div>
+                }
+
+                @if (selectedConnectionMode == "DirectOllama")
+                {
+                    <div class="setting-group">
+                        <label>Ollama Endpoint:</label>
+                        <input type="text" @bind="directOllamaUrl" placeholder="http://192.168.1.100:11434" class="retro-input" style="width: 100%;" />
+                        <p class="setting-hint">Direct Ollama API endpoint. Requires CORS headers on the Ollama server.</p>
+                    </div>
+                }
+
+                <button class="btn-secondary" @onclick="ApplyConnectionSettings" style="margin-top: 10px;">
+                    📡 Apply Connection
+                </button>
+
+                @if (!string.IsNullOrEmpty(connectionStatusMessage))
+                {
+                    <div class="status-message @connectionStatusClass" style="margin-top: 8px;">
+                        @connectionStatusMessage
+                    </div>
+                }
+            </div>
+
             <!-- Theme Selection Section -->
             <div class="settings-section">
                 <h3>🎨 Retro-Futuristic Theme</h3>
@@ -137,12 +184,25 @@
     private string statusMessage = string.Empty;
     private string statusClass = string.Empty;
 
+    // Connection mode fields
+    private string selectedConnectionMode = "LocalProxy";
+    private string remoteServerUrl = string.Empty;
+    private string directOllamaUrl = string.Empty;
+    private string connectionStatusMessage = string.Empty;
+    private string connectionStatusClass = string.Empty;
+
     protected override async Task OnInitializedAsync()
     {
         preferences = PreferenceManager.GetCurrentPreferences();
         availableThemes = ThemeService.GetAvailableThemes();
         var theme = await ThemeService.GetCurrentThemeAsync();
         currentTheme = theme.Name;
+
+        // Load current connection settings
+        var mode = LLMService.GetConnectionMode();
+        selectedConnectionMode = mode.ToString();
+        remoteServerUrl = LLMService.GetRemoteServerUrl() ?? string.Empty;
+        directOllamaUrl = LLMService.GetOllamaEndpoint() ?? "http://localhost:11434";
     }
 
     private async Task SaveSettings()
@@ -203,5 +263,43 @@
     private string GetThemePreviewStyle(ThemeSettings theme)
     {
         return $"background: linear-gradient(135deg, {theme.PrimaryColor}, {theme.SecondaryColor}); border: 2px solid {theme.BorderColor};";
+    }
+
+    private void ApplyConnectionSettings()
+    {
+        try
+        {
+            var mode = Enum.Parse<ConnectionMode>(selectedConnectionMode);
+            switch (mode)
+            {
+                case ConnectionMode.RemoteServer:
+                    if (string.IsNullOrWhiteSpace(remoteServerUrl))
+                    {
+                        connectionStatusMessage = "✗ Please enter a remote server URL.";
+                        connectionStatusClass = "error";
+                        return;
+                    }
+                    LLMService.SetConnectionMode(ConnectionMode.RemoteServer, remoteServerUrl);
+                    break;
+                case ConnectionMode.DirectOllama:
+                    if (!string.IsNullOrWhiteSpace(directOllamaUrl))
+                    {
+                        LLMService.SetOllamaConfig(directOllamaUrl, LLMService.GetOllamaModel() ?? "mistral");
+                    }
+                    LLMService.SetConnectionMode(ConnectionMode.DirectOllama);
+                    break;
+                default:
+                    LLMService.SetConnectionMode(ConnectionMode.LocalProxy);
+                    break;
+            }
+            connectionStatusMessage = $"✓ Connection mode set to {selectedConnectionMode}";
+            connectionStatusClass = "success";
+        }
+        catch (Exception ex)
+        {
+            connectionStatusMessage = $"✗ Error: {ex.Message}";
+            connectionStatusClass = "error";
+        }
+        StateHasChanged();
     }
 }

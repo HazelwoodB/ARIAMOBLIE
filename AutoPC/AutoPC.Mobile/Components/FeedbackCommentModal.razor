@@ -1,0 +1,106 @@
+@* AutoPC\AutoPC.Client\Components\FeedbackCommentModal.razor *@
+
+<div class="feedback-modal-overlay" style="display: @(isVisible ? "flex" : "none")">
+    <div class="feedback-modal-content">
+        <div class="modal-header">
+            <h3>Leave a comment</h3>
+            <button class="modal-close" @onclick="OnCancel">✕</button>
+        </div>
+        
+        <div class="modal-body">
+            <p class="modal-rating">
+                You rated this response: <span class="star-display">@GetStarEmoji(Rating)</span>
+            </p>
+            
+            <textarea class="modal-textarea" 
+                      @bind="comment" 
+                      placeholder="What could ARIA improve? (optional)"
+                      maxlength="500"
+                      rows="4"></textarea>
+            
+            <p class="char-count">@comment?.Length ?? 0 / 500</p>
+        </div>
+        
+        <div class="modal-actions">
+            <button class="modal-btn modal-btn-submit" @onclick="OnSubmit">
+                Submit Feedback
+            </button>
+            <button class="modal-btn modal-btn-skip" @onclick="OnCancel">
+                Skip
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int Rating { get; set; }
+    
+    [Parameter]
+    public EventCallback<(int Rating, string? Comment)> OnFeedbackSubmitted { get; set; }
+    
+    private bool isVisible = false;
+    private string? comment = null;
+    
+    /// <summary>
+    /// Show the modal with loading state
+    /// </summary>
+    public async Task ShowAsync()
+    {
+        isVisible = true;
+        comment = null;
+        await Task.CompletedTask;
+    }
+    
+    /// <summary>
+    /// Hide the modal
+    /// </summary>
+    private async Task HideAsync()
+    {
+        isVisible = false;
+        comment = null;
+        await Task.CompletedTask;
+    }
+    
+    /// <summary>
+    /// Handle submit - invoke parent callback
+    /// </summary>
+    private async Task OnSubmit()
+    {
+        try
+        {
+            await OnFeedbackSubmitted.InvokeAsync((Rating, comment));
+            await HideAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Modal] Error submitting: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Handle cancel - close without submitting
+    /// </summary>
+    private async Task OnCancel()
+    {
+        await HideAsync();
+        StateHasChanged();
+    }
+    
+    /// <summary>
+    /// Convert rating to star emoji
+    /// </summary>
+    private string GetStarEmoji(int rating)
+    {
+        return rating switch
+        {
+            1 => "⭐",
+            2 => "⭐⭐",
+            3 => "⭐⭐⭐",
+            4 => "⭐⭐⭐⭐",
+            5 => "⭐⭐⭐⭐⭐",
+            _ => "?"
+        };
+    }
+}

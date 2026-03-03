@@ -3,20 +3,60 @@
 
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#00f0ff" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ARIA" />
+    <meta name="description" content="ARIA v3.0 — Near-Turing test AI assistant with emotional intelligence" />
     <base href="/" />
     <ResourcePreloader />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="icons/aria-192.svg" />
     <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["AutoPC.styles.css"]" />
     <ImportMap />
-    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="icon" type="image/svg+xml" href="icons/aria-192.svg" />
     <HeadOutlet />
 </head>
 
 <body>
     <Routes />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script>
+        // Register PWA service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('[PWA] Service worker registered:', reg.scope))
+                    .catch(err => console.warn('[PWA] Service worker registration failed:', err));
+            });
+        }
+
+        // PWA install prompt handler
+        let deferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // Dispatch event so Blazor can show install button
+            document.dispatchEvent(new CustomEvent('pwa-installable'));
+        });
+        window.triggerPwaInstall = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const result = await deferredPrompt.userChoice;
+                console.log('[PWA] Install result:', result.outcome);
+                deferredPrompt = null;
+                return result.outcome === 'accepted';
+            }
+            return false;
+        };
+        window.isPwaInstalled = () => {
+            return window.matchMedia('(display-mode: standalone)').matches
+                || window.navigator.standalone === true;
+        };
+    </script>
 </body>
 
 </html>

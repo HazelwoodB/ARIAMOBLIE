@@ -1,0 +1,304 @@
+@page "/settings"
+@inject PreferenceManager PreferenceManager
+@inject RetroThemeService ThemeService
+@inject ClientLLMService LLMService
+@inject NavigationManager Navigation
+@using AutoPC.Client.Services
+@using AutoPC.Client.Services.Foundation
+@using static AutoPC.Client.Services.ClientLLMService
+
+<PageTitle>ARIA Settings - Customize Your Experience</PageTitle>
+
+<div class="settings-container">
+    <div class="settings-header">
+        <h2>⚙️ ARIA CONFIGURATION</h2>
+        <p class="subtitle">Customize your auxiliary response intelligence assistant</p>
+    </div>
+
+    @if (preferences != null)
+    {
+        <div class="settings-sections">
+            <!-- Communication Style Section -->
+            <div class="settings-section">
+                <h3>💬 Communication Style</h3>
+                
+                <div class="setting-group">
+                    <label>Communication Style:</label>
+                    <select @bind="preferences.CommunicationStyle" class="retro-select">
+                        <option value="casual">Casual - Friendly and conversational</option>
+                        <option value="formal">Formal - Professional and polished</option>
+                        <option value="technical">Technical - Industry-standard terminology</option>
+                    </select>
+                </div>
+
+                <div class="setting-group">
+                    <label>Response Length:</label>
+                    <select @bind="preferences.ResponseLength" class="retro-select">
+                        <option value="1">Brief - Concise answers (1-2 paragraphs)</option>
+                        <option value="2">Normal - Balanced detail (2-3 paragraphs)</option>
+                        <option value="3">Detailed - Comprehensive explanations</option>
+                    </select>
+                </div>
+
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="enableEmojis" @bind="preferences.EnableEmojis" />
+                    <label for="enableEmojis">Enable emojis ✨ (adds personality)</label>
+                </div>
+
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="enableHumor" @bind="preferences.EnableHumor" />
+                    <label for="enableHumor">Enable subtle sass 😎 (1950s charm)</label>
+                </div>
+            </div>
+
+            <!-- Interaction Preferences Section -->
+            <div class="settings-section">
+                <h3>🤝 Interaction Preferences</h3>
+                
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="enableGreetings" @bind="preferences.EnableGreetings" />
+                    <label for="enableGreetings">Enable personalized greetings</label>
+                </div>
+
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="enableWellness" @bind="preferences.EnableWellnessChecks" />
+                    <label for="enableWellness">Enable wellness checks (ARIA cares about you)</label>
+                </div>
+
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="enableContext" @bind="preferences.EnableContextAwareness" />
+                    <label for="enableContext">Enable context awareness (remembers conversation)</label>
+                </div>
+            </div>
+
+            <!-- Privacy & Data Section -->
+            <div class="settings-section">
+                <h3>🔒 Privacy & Data</h3>
+                
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="saveHistory" @bind="preferences.SaveConversationHistory" />
+                    <label for="saveHistory">Save conversation history</label>
+                </div>
+
+                <div class="setting-group">
+                    <label>Keep history for (days):</label>
+                    <input type="number" @bind="preferences.MaxHistoryDays" min="1" max="365" class="retro-input" />
+                </div>
+
+                <div class="setting-checkbox">
+                    <input type="checkbox" id="anonymize" @bind="preferences.AnonymizeData" />
+                    <label for="anonymize">Anonymize collected data</label>
+                </div>
+            </div>
+
+            <!-- Connection Mode Section (PWA / Mobile) -->
+            <div class="settings-section">
+                <h3>📡 Connection Mode</h3>
+                <p class="section-description">Configure how ARIA connects to the AI backend. Use "Remote Server" when accessing from a phone or another device.</p>
+
+                <div class="setting-group">
+                    <label>Connection Mode:</label>
+                    <select @bind="selectedConnectionMode" class="retro-select">
+                        <option value="LocalProxy">Local (same machine as server)</option>
+                        <option value="RemoteServer">Remote Server (connect over network)</option>
+                        <option value="DirectOllama">Direct Ollama (advanced)</option>
+                    </select>
+                </div>
+
+                @if (selectedConnectionMode == "RemoteServer")
+                {
+                    <div class="setting-group">
+                        <label>Server URL:</label>
+                        <input type="text" @bind="remoteServerUrl" placeholder="https://your-tunnel-url.trycloudflare.com" class="retro-input" style="width: 100%;" />
+                        <p class="setting-hint">Enter the tunnel URL shown in the ARIA launcher (e.g., https://xxx.trycloudflare.com)</p>
+                    </div>
+                }
+
+                @if (selectedConnectionMode == "DirectOllama")
+                {
+                    <div class="setting-group">
+                        <label>Ollama Endpoint:</label>
+                        <input type="text" @bind="directOllamaUrl" placeholder="http://192.168.1.100:11434" class="retro-input" style="width: 100%;" />
+                        <p class="setting-hint">Direct Ollama API endpoint. Requires CORS headers on the Ollama server.</p>
+                    </div>
+                }
+
+                <button class="btn-secondary" @onclick="ApplyConnectionSettings" style="margin-top: 10px;">
+                    📡 Apply Connection
+                </button>
+
+                @if (!string.IsNullOrEmpty(connectionStatusMessage))
+                {
+                    <div class="status-message @connectionStatusClass" style="margin-top: 8px;">
+                        @connectionStatusMessage
+                    </div>
+                }
+            </div>
+
+            <!-- Theme Selection Section -->
+            <div class="settings-section">
+                <h3>🎨 Retro-Futuristic Theme</h3>
+                
+                <div class="theme-selector">
+                    @foreach (var theme in availableThemes)
+                    {
+                        <div class="theme-option @(currentTheme == theme.Key ? "selected" : "")" 
+                             @onclick="() => SelectTheme(theme.Key)">
+                            <div class="theme-preview" style="@GetThemePreviewStyle(theme.Value)"></div>
+                            <div class="theme-info">
+                                <strong>@theme.Value.Name</strong>
+                                <p>@theme.Value.Description</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-actions">
+            <button class="btn-primary" @onclick="SaveSettings">
+                💾 Save Settings
+            </button>
+            <button class="btn-secondary" @onclick="ResetToDefaults">
+                🔄 Reset to Defaults
+            </button>
+            <button class="btn-ghost" @onclick="GoBack">
+                ← Back to Chat
+            </button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(statusMessage))
+        {
+            <div class="status-message @statusClass">
+                @statusMessage
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private UserPreferences? preferences;
+    private Dictionary<string, ThemeSettings> availableThemes = new();
+    private string currentTheme = "Classic1950s";
+    private string statusMessage = string.Empty;
+    private string statusClass = string.Empty;
+
+    // Connection mode fields
+    private string selectedConnectionMode = "DirectOllama";
+    private string remoteServerUrl = string.Empty;
+    private string directOllamaUrl = string.Empty;
+    private string connectionStatusMessage = string.Empty;
+    private string connectionStatusClass = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        preferences = PreferenceManager.GetCurrentPreferences();
+        availableThemes = ThemeService.GetAvailableThemes();
+        var theme = await ThemeService.GetCurrentThemeAsync();
+        currentTheme = theme.Name;
+
+        // Load current connection settings
+        var mode = LLMService.GetConnectionMode();
+        selectedConnectionMode = mode.ToString();
+        remoteServerUrl = LLMService.GetRemoteServerUrl() ?? string.Empty;
+        directOllamaUrl = LLMService.GetOllamaEndpoint() ?? "http://localhost:11434";
+    }
+
+    private async Task SaveSettings()
+    {
+        if (preferences != null)
+        {
+            var success = await PreferenceManager.UpdatePreferencesAsync(preferences);
+            if (success)
+            {
+                statusMessage = "✓ Settings saved successfully!";
+                statusClass = "success";
+            }
+            else
+            {
+                statusMessage = "✗ Failed to save settings";
+                statusClass = "error";
+            }
+            StateHasChanged();
+
+            // Clear message after 3 seconds
+            await Task.Delay(3000);
+            statusMessage = string.Empty;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SelectTheme(string themeName)
+    {
+        currentTheme = themeName;
+        await ThemeService.SetThemeAsync(themeName);
+        statusMessage = $"✓ Theme changed to {themeName}";
+        statusClass = "success";
+        StateHasChanged();
+    }
+
+    private async Task ResetToDefaults()
+    {
+        var success = await PreferenceManager.ResetToDefaultsAsync();
+        if (success)
+        {
+            preferences = PreferenceManager.GetCurrentPreferences();
+            statusMessage = "✓ Settings reset to defaults";
+            statusClass = "success";
+        }
+        else
+        {
+            statusMessage = "✗ Failed to reset settings";
+            statusClass = "error";
+        }
+        StateHasChanged();
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/chat");
+    }
+
+    private string GetThemePreviewStyle(ThemeSettings theme)
+    {
+        return $"background: linear-gradient(135deg, {theme.PrimaryColor}, {theme.SecondaryColor}); border: 2px solid {theme.BorderColor};";
+    }
+
+    private void ApplyConnectionSettings()
+    {
+        try
+        {
+            var mode = Enum.Parse<ConnectionMode>(selectedConnectionMode);
+            switch (mode)
+            {
+                case ConnectionMode.RemoteServer:
+                    if (string.IsNullOrWhiteSpace(remoteServerUrl))
+                    {
+                        connectionStatusMessage = "✗ Please enter a remote server URL.";
+                        connectionStatusClass = "error";
+                        return;
+                    }
+                    LLMService.SetConnectionMode(ConnectionMode.RemoteServer, remoteServerUrl);
+                    break;
+                case ConnectionMode.DirectOllama:
+                    if (!string.IsNullOrWhiteSpace(directOllamaUrl))
+                    {
+                        LLMService.SetOllamaConfig(directOllamaUrl, LLMService.GetOllamaModel() ?? "mistral");
+                    }
+                    LLMService.SetConnectionMode(ConnectionMode.DirectOllama);
+                    break;
+                default:
+                    LLMService.SetConnectionMode(ConnectionMode.LocalProxy);
+                    break;
+            }
+            connectionStatusMessage = $"✓ Connection mode set to {selectedConnectionMode}";
+            connectionStatusClass = "success";
+        }
+        catch (Exception ex)
+        {
+            connectionStatusMessage = $"✗ Error: {ex.Message}";
+            connectionStatusClass = "error";
+        }
+        StateHasChanged();
+    }
+}

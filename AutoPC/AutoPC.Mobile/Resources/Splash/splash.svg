@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Splash screen: ARIA diamond symbol -->
+  <polygon points="256,100 400,256 256,412 112,256" fill="none" stroke="#00f0ff" stroke-width="6" opacity="0.8"/>
+  <polygon points="256,160 340,256 256,352 172,256" fill="#00f0ff" opacity="0.12"/>
+  <circle cx="256" cy="256" r="24" fill="#00f0ff" opacity="0.9"/>
+  <!-- Corner dots -->
+  <circle cx="256" cy="100" r="5" fill="#00f0ff"/>
+  <circle cx="400" cy="256" r="5" fill="#00f0ff"/>
+  <circle cx="256" cy="412" r="5" fill="#00f0ff"/>
+  <circle cx="112" cy="256" r="5" fill="#00f0ff"/>
+</svg>

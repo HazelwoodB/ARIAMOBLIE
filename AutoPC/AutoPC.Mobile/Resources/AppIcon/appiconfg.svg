@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Foreground: white diamond symbol for visibility on adaptive icons -->
+  <polygon points="256,100 400,256 256,412 112,256" fill="white" opacity="0.95"/>
+  <circle cx="256" cy="256" r="35" fill="#0a0a0f"/>
+</svg>

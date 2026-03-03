@@ -1,0 +1,180 @@
+/* ═══════════════════════════════════════════
+   ARIA MOBILE — Cyberpunk Theme
+   ═══════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --cp-bg-deep: #0a0a0f;
+    --cp-bg-dark: #0d0d1a;
+    --cp-bg-panel: #111126;
+    --cp-bg-card: #161633;
+    --cp-border: #1a1a3e;
+    --cp-border-glow: #00f0ff33;
+    --cp-cyan: #00f0ff;
+    --cp-magenta: #ff2d7b;
+    --cp-yellow: #f5e642;
+    --cp-green: #39ff14;
+    --cp-purple: #b44dff;
+    --cp-orange: #ff6a00;
+    --cp-text: #c8d6e5;
+    --cp-text-dim: #5a6988;
+    --cp-text-bright: #e8f0fe;
+    --cp-glow-cyan: 0 0 8px #00f0ff66, 0 0 20px #00f0ff22;
+    --cp-glow-magenta: 0 0 8px #ff2d7b66, 0 0 20px #ff2d7b22;
+    --cp-glow-yellow: 0 0 8px #f5e64266, 0 0 20px #f5e64222;
+    --cp-font-display: 'Orbitron', sans-serif;
+    --cp-font-mono: 'Share Tech Mono', monospace;
+    --cp-font-body: 'Rajdhani', sans-serif;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    font-family: var(--cp-font-body);
+    font-weight: 400;
+    background-color: var(--cp-bg-deep);
+    color: var(--cp-text);
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 4px;
+}
+::-webkit-scrollbar-track {
+    background: var(--cp-bg-deep);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--cp-cyan);
+    border-radius: 3px;
+}
+
+a, .btn-link {
+    color: var(--cp-cyan);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--cp-font-display);
+    color: var(--cp-text-bright);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+h1 {
+    font-size: 1.4rem;
+    background: linear-gradient(90deg, var(--cp-cyan), var(--cp-magenta));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.btn-primary {
+    color: var(--cp-bg-deep);
+    background: var(--cp-cyan);
+    border: 1px solid var(--cp-cyan);
+    font-family: var(--cp-font-display);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    box-shadow: var(--cp-glow-cyan);
+}
+
+.form-control {
+    background-color: var(--cp-bg-dark);
+    border: 1px solid var(--cp-border);
+    color: var(--cp-text);
+    font-family: var(--cp-font-mono);
+}
+
+.form-control:focus {
+    background-color: var(--cp-bg-panel);
+    border-color: var(--cp-cyan);
+    color: var(--cp-text-bright);
+    box-shadow: var(--cp-glow-cyan);
+}
+
+/* Status bar spacer for mobile */
+.status-bar-spacer {
+    height: env(safe-area-inset-top, 0px);
+    background-color: var(--cp-bg-deep);
+}
+
+/* Loading Screen */
+.loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: var(--cp-bg-deep);
+}
+
+.loading-icon {
+    font-size: 3rem;
+    color: var(--cp-cyan);
+    text-shadow: 0 0 20px var(--cp-cyan), 0 0 40px var(--cp-cyan);
+    animation: loadingPulse 1.5s ease-in-out infinite;
+}
+
+.loading-text {
+    font-family: var(--cp-font-display);
+    font-size: 1.2rem;
+    color: var(--cp-text-bright);
+    letter-spacing: 4px;
+    margin-top: 1rem;
+}
+
+.loading-sub {
+    font-family: var(--cp-font-mono);
+    font-size: 0.75rem;
+    color: var(--cp-text-dim);
+    margin-top: 0.5rem;
+}
+
+@keyframes loadingPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.1); }
+}
+
+/* Blazor error boundary */
+.blazor-error-boundary {
+    background: var(--cp-magenta);
+    padding: 1rem;
+    color: white;
+    font-family: var(--cp-font-mono);
+    border: 1px solid var(--cp-magenta);
+}
+
+.blazor-error-boundary::after {
+    content: "// SYSTEM ERROR"
+}
+
+/* Mobile-specific overrides */
+.content {
+    padding: 0.5rem;
+}
+
+.valid.modified:not([type=checkbox]) {
+    outline: 1px solid var(--cp-green);
+}
+
+.invalid {
+    outline: 1px solid var(--cp-magenta);
+}
+
+.validation-message {
+    color: var(--cp-magenta);
+    font-family: var(--cp-font-mono);
+    font-size: 0.8rem;
+}

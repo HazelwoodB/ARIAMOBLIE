@@ -1,0 +1,73 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+@if (showInstallBanner)
+{
+    <div class="pwa-install-banner">
+        <div class="pwa-install-content">
+            <span class="pwa-icon">◈</span>
+            <div class="pwa-text">
+                <strong>Install ARIA</strong>
+                <span>Add to your home screen for quick access</span>
+            </div>
+            <button class="pwa-install-btn" @onclick="InstallApp">INSTALL</button>
+            <button class="pwa-dismiss-btn" @onclick="DismissBanner">✕</button>
+        </div>
+    </div>
+}
+
+@code {
+    private bool showInstallBanner = false;
+    private DotNetObjectReference<PwaInstallPrompt>? _objRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _objRef = DotNetObjectReference.Create(this);
+
+            // Check if already installed
+            var isInstalled = await JS.InvokeAsync<bool>("isPwaInstalled");
+            if (isInstalled) return;
+
+            // Listen for install prompt
+            await JS.InvokeVoidAsync("eval", @"
+                document.addEventListener('pwa-installable', () => {
+                    DotNet.invokeMethodAsync('AutoPC.Client', 'OnPwaInstallable');
+                });
+            ");
+
+            // Also check if prompt already fired
+            var canInstall = await JS.InvokeAsync<bool>("eval", "deferredPrompt !== null");
+            if (canInstall)
+            {
+                showInstallBanner = true;
+                StateHasChanged();
+            }
+        }
+    }
+
+    [JSInvokable("OnPwaInstallable")]
+    public static void OnPwaInstallableStatic()
+    {
+        // This triggers from JS - handled via the event listener above
+    }
+
+    private async Task InstallApp()
+    {
+        var accepted = await JS.InvokeAsync<bool>("triggerPwaInstall");
+        showInstallBanner = false;
+        StateHasChanged();
+    }
+
+    private void DismissBanner()
+    {
+        showInstallBanner = false;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        _objRef?.Dispose();
+    }
+}

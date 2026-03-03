@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARIA — Offline</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600&display=swap');
+    body {
+      margin: 0; padding: 0;
+      background: #0a0a0f;
+      color: #c8d6e5;
+      font-family: 'Rajdhani', sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+    }
+    .offline-box {
+      max-width: 400px; padding: 40px 30px;
+      border: 1px solid #00f0ff33;
+      border-radius: 8px;
+      background: #111126;
+    }
+    .offline-box h1 {
+      font-family: 'Orbitron', sans-serif;
+      color: #00f0ff; font-size: 1.6em;
+      margin-bottom: 10px;
+    }
+    .offline-box p { color: #5a6988; line-height: 1.6; }
+    .glyph { font-size: 3em; margin-bottom: 16px; }
+    .retry-btn {
+      margin-top: 20px; padding: 10px 28px;
+      background: transparent; border: 1px solid #00f0ff;
+      color: #00f0ff; font-family: 'Orbitron', sans-serif;
+      cursor: pointer; font-size: 0.9em;
+      transition: background 0.2s;
+    }
+    .retry-btn:hover { background: #00f0ff22; }
+  </style>
+</head>
+<body>
+  <div class="offline-box">
+    <div class="glyph">◈</div>
+    <h1>ARIA OFFLINE</h1>
+    <p>Connection to the server lost. Please check your network and ensure the ARIA server is running.</p>
+    <button class="retry-btn" onclick="location.reload()">↻ RETRY CONNECTION</button>
+  </div>
+</body>
+</html>

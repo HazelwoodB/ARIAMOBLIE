@@ -10,7 +10,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddScoped(sp => new HttpClient 
 { 
     BaseAddress = new Uri(builder.HostEnvironment.BaseAddress),
-    Timeout = TimeSpan.FromSeconds(30)
+    Timeout = TimeSpan.FromSeconds(300)
 });
 
 // Register foundation services (must be registered first - others depend on these)
@@ -18,6 +18,7 @@ builder.Services.AddScoped<StorageService>();
 builder.Services.AddScoped<UserProfileService>();
 builder.Services.AddScoped<PreferenceManager>();
 builder.Services.AddScoped<FeedbackCollector>();
+builder.Services.AddScoped<FeedbackLearningService>();
 
 // Register Phase 3 services - ARIA 3.0 enhancements
 builder.Services.AddScoped<EmotionRecognitionService>();

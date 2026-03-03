@@ -1,0 +1,232 @@
+@inject RetroThemeService ThemeService
+@using AutoPC.Client.Services.Foundation
+@implements IDisposable
+
+<!-- WandaVision Reality Effects -->
+<div class="wandavision-effects">
+    <!-- Hexagonal Barrier Overlay -->
+    @if (currentTheme?.Name?.Contains("Hex") == true)
+    {
+        <div class="hex-overlay"></div>
+    }
+
+    <!-- TV Static Effect -->
+    @if (showTVStatic)
+    {
+        <div class="tv-static"></div>
+    }
+
+    <!-- Aspect Ratio Bars (4:3 for vintage TV) -->
+    @if (showAspectRatioBars)
+    {
+        <div class="aspect-ratio-bars left"></div>
+        <div class="aspect-ratio-bars right"></div>
+    }
+
+    <!-- Broadcast Signal Indicator -->
+    @if (showBroadcastSignal)
+    {
+        <div class="broadcast-signal" title="Live Broadcast"></div>
+    }
+
+    <!-- Sitcom Title Card (appears on theme change) -->
+    @if (showTitleCard)
+    {
+        <div class="sitcom-title-card">
+            @titleCardText
+        </div>
+    }
+
+    <!-- Applause Sign (appears on positive feedback) -->
+    @if (showApplauseSign)
+    {
+        <div class="applause-sign">
+            👏 APPLAUSE 👏
+        </div>
+    }
+
+    <!-- Laugh Track Indicator (appears randomly during conversation) -->
+    @if (showLaughTrack)
+    {
+        <div class="laugh-track-indicator">
+            *laugh track*
+        </div>
+    }
+
+    <!-- Magic Particles (Wanda's chaos magic) -->
+    @foreach (var particle in magicParticles)
+    {
+        <div class="magic-particle" 
+             style="left: @(particle.X)px; top: @(particle.Y)px; animation-delay: @(particle.Delay)s;"></div>
+    }
+</div>
+
+@code {
+    private ThemeSettings? currentTheme;
+    private bool showTVStatic = true;
+    private bool showAspectRatioBars = false;
+    private bool showBroadcastSignal = true;
+    private bool showTitleCard = false;
+    private bool showApplauseSign = false;
+    private bool showLaughTrack = false;
+    private string titleCardText = "";
+    private List<MagicParticle> magicParticles = new();
+    private Random random = new();
+    private System.Threading.Timer? particleTimer;
+    private System.Threading.Timer? laughTrackTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentTheme = await ThemeService.GetCurrentThemeAsync();
+        ThemeService.ThemeChanged += OnThemeChanged;
+        
+        UpdateEffectsForTheme();
+        
+        // Start particle generation for Hex theme
+        if (currentTheme?.Name?.Contains("Hex") == true)
+        {
+            StartMagicParticles();
+        }
+
+        // Random laugh track appearances
+        StartLaughTrackTimer();
+    }
+
+    private void OnThemeChanged(object? sender, ThemeSettings newTheme)
+    {
+        currentTheme = newTheme;
+        UpdateEffectsForTheme();
+        ShowTitleCard(newTheme.Name);
+        StateHasChanged();
+    }
+
+    private void UpdateEffectsForTheme()
+    {
+        if (currentTheme == null) return;
+
+        var themeName = currentTheme.Name;
+
+        // Show aspect ratio bars for vintage themes
+        showAspectRatioBars = themeName.Contains("1950s") || 
+                              themeName.Contains("1960s") || 
+                              themeName.Contains("1970s");
+
+        // Show TV static for all WandaVision themes except Hex
+        showTVStatic = themeName.Contains("WandaVision") && !themeName.Contains("Hex");
+
+        // Show broadcast signal for all themes
+        showBroadcastSignal = true;
+
+        // Generate magic particles for Hex theme
+        if (themeName.Contains("Hex"))
+        {
+            StartMagicParticles();
+        }
+        else
+        {
+            StopMagicParticles();
+        }
+    }
+
+    private async void ShowTitleCard(string themeName)
+    {
+        titleCardText = GetTitleCardText(themeName);
+        showTitleCard = true;
+        StateHasChanged();
+
+        await Task.Delay(4000);
+        showTitleCard = false;
+        StateHasChanged();
+    }
+
+    private string GetTitleCardText(string themeName)
+    {
+        return themeName switch
+        {
+            "WandaVision: 1950s Sitcom" => "\"Filmed before a live studio audience\"",
+            "WandaVision: 1960s Color TV" => "\"Now in living color!\"",
+            "WandaVision: 1970s Groovy" => "\"Groovy, baby!\"",
+            "WandaVision: 1980s Neon" => "\"Totally radical!\"",
+            "WandaVision: The Hex" => "\"Don't touch that dial...\"",
+            _ => "\"ARIA - Now streaming\""
+        };
+    }
+
+    public async void ShowApplause()
+    {
+        showApplauseSign = true;
+        StateHasChanged();
+
+        await Task.Delay(2000);
+        showApplauseSign = false;
+        StateHasChanged();
+    }
+
+    private void StartMagicParticles()
+    {
+        particleTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(() =>
+            {
+                // Add 1-2 particles with responsive positioning
+                var count = random.Next(1, 3);
+                for (int i = 0; i < count; i++)
+                {
+                    magicParticles.Add(new MagicParticle
+                    {
+                        X = random.Next(0, 400),  // Mobile-friendly width
+                        Y = random.Next(200, 500), // Mobile-friendly height
+                        Delay = random.NextDouble() * 0.5
+                    });
+                }
+
+                // Remove old particles (keep max 10 for mobile performance)
+                if (magicParticles.Count > 10)
+                {
+                    magicParticles = magicParticles.TakeLast(10).ToList();
+                }
+
+                StateHasChanged();
+            });
+        }, null, 0, 1500); // Generate particles every 1.5s (reduced for mobile performance)
+    }
+
+    private void StopMagicParticles()
+    {
+        particleTimer?.Dispose();
+        magicParticles.Clear();
+    }
+
+    private void StartLaughTrackTimer()
+    {
+        laughTrackTimer = new System.Threading.Timer(_ =>
+        {
+            if (random.NextDouble() < 0.1) // 10% chance every 10 seconds
+            {
+                InvokeAsync(async () =>
+                {
+                    showLaughTrack = true;
+                    StateHasChanged();
+
+                    await Task.Delay(3000);
+                    showLaughTrack = false;
+                    StateHasChanged();
+                });
+            }
+        }, null, 30000, 30000); // Check every 30 seconds (reduced for mobile performance)
+    }
+
+    public void Dispose()
+    {
+        ThemeService.ThemeChanged -= OnThemeChanged;
+        particleTimer?.Dispose();
+        laughTrackTimer?.Dispose();
+    }
+
+    private class MagicParticle
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        public double Delay { get; set; }
+    }
+}

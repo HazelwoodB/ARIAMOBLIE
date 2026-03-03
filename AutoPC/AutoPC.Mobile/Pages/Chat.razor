@@ -1,0 +1,568 @@
+@page "/"
+@page "/chat"
+@implements IDisposable
+@using AutoPC.Client.Services
+@using AutoPC.Client.Services.Foundation
+@using Microsoft.Maui.ApplicationModel
+@inject ClientLLMService LLMService
+@inject StorageService StorageService
+@inject UpdateService UpdateService
+
+<PageTitle>ARIA Chat</PageTitle>
+
+<div class="chat-shell">
+    <section class="connection-bar">
+        <label>Mode</label>
+        <select @bind="connectionMode">
+            <option value="RemoteServer">Remote Server</option>
+            <option value="DirectOllama">Direct Ollama</option>
+        </select>
+
+        <label>Endpoint</label>
+        <input @bind="endpoint" placeholder="https://your-server-url.trycloudflare.com" />
+
+        <button @onclick="ApplyConnection">Apply</button>
+        <button class="ghost" @onclick="TestLink">Test Link</button>
+        <button class="ghost" @onclick="ClearChat">Clear</button>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(statusMessage))
+    {
+        <div class="status">@statusMessage</div>
+    }
+
+    <section class="status-panel">
+        <div class="status-pill @(serverOnline ? "ok" : "bad")">Server: @(serverOnline ? "Online" : "Offline")</div>
+        <div class="status-pill @(ollamaOnline ? "ok" : "bad")">Model: @(ollamaOnline ? "Ready" : "Unavailable")</div>
+        <button class="ghost" @onclick="RefreshStatus">Refresh Status</button>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(connectionDetail))
+    {
+        <div class="status-detail">@connectionDetail</div>
+    }
+
+    <section class="update-panel">
+        <div>
+            <strong>App Version:</strong> @currentVersion (build @currentBuild)
+        </div>
+        <button class="ghost" @onclick="CheckUpdates">Check Updates</button>
+        @if (lastUpdateCheckUtc.HasValue)
+        {
+            <span class="update-meta">Last checked: @GetLastCheckedText()</span>
+        }
+        @if (updateAvailable && !string.IsNullOrWhiteSpace(updateDownloadUrl))
+        {
+            <button @onclick="OpenUpdateUrl">Download Update</button>
+        }
+        @if (updateAvailable && !mandatoryUpdateRequired)
+        {
+            <button class="ghost" @onclick="IgnoreOptionalUpdateToday">Ignore Today</button>
+        }
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(updateMessage))
+    {
+        <div class="status-detail">@updateMessage</div>
+    }
+
+    @if (mandatoryUpdateRequired)
+    {
+        <section class="mandatory-banner">
+            <strong>Mandatory update required.</strong>
+            <span>Install the latest app version to continue chatting.</span>
+            @if (!string.IsNullOrWhiteSpace(updateDownloadUrl))
+            {
+                <button @onclick="OpenUpdateUrl">Download Update</button>
+            }
+        </section>
+    }
+
+    <section class="chat-window" id="chat-window">
+        @foreach (var message in messages)
+        {
+            <article class="msg @(message.Role == "user" ? "user" : "assistant")">
+                <header>
+                    <span>@(message.Role == "user" ? "You" : "ARIA")</span>
+                    <small>@message.Timestamp.ToLocalTime().ToString("HH:mm")</small>
+                </header>
+                <p>@message.Message</p>
+            </article>
+        }
+
+        @if (isSending)
+        {
+            <article class="msg assistant">
+                <header><span>ARIA</span><small>thinking</small></header>
+                <p>Running diagnostics and crafting your response…</p>
+            </article>
+        }
+    </section>
+
+    <section class="composer">
+        <textarea @bind="draft" @bind:event="oninput" placeholder="Ask ARIA anything... (commands: /status, /update, /update install)" disabled="@isSending || mandatoryUpdateRequired"></textarea>
+        <button @onclick="Send" disabled="@isSending || mandatoryUpdateRequired || string.IsNullOrWhiteSpace(draft)">Send</button>
+    </section>
+</div>
+
+@code {
+    private const string HistoryKey = "chat_history_v2";
+    private const string ConnectionKey = "chat_connection_v1";
+    private const string UpdatePrefsKey = "update_prefs_v1";
+
+    private readonly List<ChatMessage> messages = new();
+    private string draft = string.Empty;
+    private string statusMessage = string.Empty;
+    private string connectionDetail = string.Empty;
+    private bool isSending;
+    private bool serverOnline;
+    private bool ollamaOnline;
+
+    private string currentVersion = AppInfo.Current.VersionString;
+    private int currentBuild = int.TryParse(AppInfo.Current.BuildString, out var buildNum) ? buildNum : 1;
+    private bool updateAvailable;
+    private bool mandatoryUpdateRequired;
+    private bool isCheckingUpdates;
+    private DateTime? lastUpdateCheckUtc;
+    private int latestAvailableBuild;
+    private string updateMessage = string.Empty;
+    private string updateDownloadUrl = string.Empty;
+    private System.Threading.Timer? updateCheckTimer;
+    private int ignoredOptionalBuild;
+    private DateTime? ignoredOptionalDateUtc;
+
+    private static readonly TimeSpan UpdateCheckInitialDelay = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromMinutes(30);
+
+    private string connectionMode = "RemoteServer";
+    private string endpoint = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadHistoryAsync();
+        await LoadConnectionAsync();
+        await LoadUpdatePreferencesAsync();
+
+        if (!string.IsNullOrWhiteSpace(endpoint))
+        {
+            await ApplyConnectionInternal(testOnly: true);
+            await RefreshStatus();
+        }
+
+        await CheckUpdatesInternal(userInitiated: false);
+        StartPeriodicUpdateChecks();
+
+        if (messages.Count == 0)
+        {
+            messages.Add(new ChatMessage
+            {
+                Role = "assistant",
+                Message = "ARIA online. I’m a witty, high-intelligence assistant that learns from our conversation history so each session gets better."
+            });
+            await SaveHistoryAsync();
+        }
+    }
+
+    private async Task ApplyConnection()
+    {
+        await ApplyConnectionInternal(testOnly: false);
+    }
+
+    private async Task ApplyConnectionInternal(bool testOnly)
+    {
+        try
+        {
+            var selected = Enum.Parse<ClientLLMService.ConnectionMode>(connectionMode);
+
+            if (selected == ClientLLMService.ConnectionMode.RemoteServer)
+            {
+                if (string.IsNullOrWhiteSpace(endpoint))
+                {
+                    statusMessage = "Enter a remote server URL first.";
+                    return;
+                }
+
+                var test = await LLMService.TestServerLinkAsync(endpoint);
+                endpoint = test.NormalizedUrl ?? endpoint;
+
+                if (!test.Success)
+                {
+                    statusMessage = $"Link failed: {test.Message}";
+                    connectionDetail = "Server is unreachable. Verify tunnel/server is running.";
+                    return;
+                }
+
+                LLMService.SetConnectionMode(ClientLLMService.ConnectionMode.RemoteServer, endpoint);
+            }
+            else
+            {
+                var ollamaEndpoint = string.IsNullOrWhiteSpace(endpoint) ? "http://localhost:11434" : endpoint;
+                LLMService.SetOllamaConfig(ollamaEndpoint, LLMService.GetOllamaModel() ?? "mistral");
+                LLMService.SetConnectionMode(ClientLLMService.ConnectionMode.DirectOllama);
+            }
+
+            await SaveConnectionAsync();
+            statusMessage = testOnly ? "Saved connection restored." : $"Connection set: {connectionMode}";
+            await RefreshStatus();
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Connection error: {ex.Message}";
+        }
+    }
+
+    private async Task TestLink()
+    {
+        if (string.IsNullOrWhiteSpace(endpoint))
+        {
+            statusMessage = "Enter a remote server URL first.";
+            return;
+        }
+
+        var test = await LLMService.TestServerLinkAsync(endpoint);
+        endpoint = test.NormalizedUrl ?? endpoint;
+        statusMessage = test.Success ? "Server link verified." : $"Link failed: {test.Message}";
+        if (test.Success)
+        {
+            await RefreshStatus();
+        }
+    }
+
+    private async Task RefreshStatus()
+    {
+        if (string.IsNullOrWhiteSpace(endpoint) || connectionMode != "RemoteServer")
+        {
+            serverOnline = false;
+            ollamaOnline = false;
+            connectionDetail = "Remote server mode is not configured.";
+            return;
+        }
+
+        var health = await UpdateService.CheckHealthAsync(endpoint);
+        endpoint = health.NormalizedServerUrl;
+        serverOnline = health.ServerOnline;
+        ollamaOnline = health.OllamaOnline;
+        connectionDetail = $"{health.ServerStatus} | {health.OllamaStatus} | Checked {health.CheckedAt.ToLocalTime():HH:mm:ss}";
+    }
+
+    private async Task CheckUpdates()
+    {
+        await CheckUpdatesInternal(userInitiated: true);
+    }
+
+    private async Task CheckUpdatesInternal(bool userInitiated)
+    {
+        if (isCheckingUpdates)
+            return;
+
+        isCheckingUpdates = true;
+
+        if (string.IsNullOrWhiteSpace(endpoint) || connectionMode != "RemoteServer")
+        {
+            if (userInitiated)
+            {
+                updateMessage = "Configure a remote server endpoint first to check updates.";
+            }
+            updateAvailable = false;
+            mandatoryUpdateRequired = false;
+            isCheckingUpdates = false;
+            return;
+        }
+
+        try
+        {
+            var result = await UpdateService.CheckForUpdateAsync(endpoint, currentBuild, currentVersion);
+            updateAvailable = result.HasUpdate;
+            updateDownloadUrl = result.Manifest?.DownloadUrl ?? string.Empty;
+            mandatoryUpdateRequired = result.HasUpdate && (result.Manifest?.Mandatory == true);
+            lastUpdateCheckUtc = DateTime.UtcNow;
+            latestAvailableBuild = result.Manifest?.LatestBuild ?? 0;
+
+            if (result.HasUpdate && result.Manifest != null)
+            {
+                var urgency = result.Manifest.Mandatory ? "Mandatory" : "Optional";
+                if (!result.Manifest.Mandatory && IsOptionalUpdateIgnoredToday(result.Manifest.LatestBuild))
+                {
+                    updateAvailable = false;
+                    updateMessage = $"Optional update {result.Manifest.LatestVersion} is ignored for today.";
+                }
+                else
+                {
+                    updateMessage = $"{urgency} update available: {result.Manifest.LatestVersion} (build {result.Manifest.LatestBuild}). Notes: {result.Manifest.ReleaseNotes}";
+                }
+
+                if (mandatoryUpdateRequired)
+                {
+                    statusMessage = "Chat is locked until the mandatory update is installed.";
+                }
+            }
+            else if (userInitiated)
+            {
+                updateMessage = result.Message;
+            }
+            else if (lastUpdateCheckUtc.HasValue)
+            {
+                updateMessage = $"Last update check: {lastUpdateCheckUtc.Value.ToLocalTime():HH:mm:ss} (up to date).";
+            }
+        }
+        finally
+        {
+            isCheckingUpdates = false;
+        }
+    }
+
+    private async Task OpenUpdateUrl()
+    {
+        if (string.IsNullOrWhiteSpace(updateDownloadUrl))
+        {
+            updateMessage = "No download URL configured on server yet.";
+            return;
+        }
+
+        await Launcher.Default.OpenAsync(updateDownloadUrl);
+    }
+
+    private async Task IgnoreOptionalUpdateToday()
+    {
+        if (mandatoryUpdateRequired || latestAvailableBuild <= 0)
+            return;
+
+        ignoredOptionalBuild = latestAvailableBuild;
+        ignoredOptionalDateUtc = DateTime.UtcNow.Date;
+        updateAvailable = false;
+        updateMessage = $"Optional update (build {ignoredOptionalBuild}) ignored for today.";
+        await SaveUpdatePreferencesAsync();
+    }
+
+    private async Task Send()
+    {
+        var text = draft.Trim();
+        if (string.IsNullOrWhiteSpace(text) || isSending)
+            return;
+
+        draft = string.Empty;
+
+        var userMessage = new ChatMessage
+        {
+            Role = "user",
+            Message = text
+        };
+
+        messages.Add(userMessage);
+        StateHasChanged();
+
+        if (await TryHandleSystemCommandAsync(text))
+        {
+            await SaveHistoryAsync();
+            return;
+        }
+
+        if (mandatoryUpdateRequired)
+        {
+            statusMessage = "Install the mandatory update before sending messages.";
+            AddAssistantMessage("Mandatory update required before chatting. Use `/update install` to open the download link.");
+            await SaveHistoryAsync();
+            return;
+        }
+
+        isSending = true;
+
+        try
+        {
+            var response = await LLMService.GenerateReplyAsync(text, messages, (string?)null, CancellationToken.None);
+            messages.Add(new ChatMessage
+            {
+                Role = "assistant",
+                Message = response
+            });
+            await SaveHistoryAsync();
+        }
+        catch (Exception ex)
+        {
+            messages.Add(new ChatMessage
+            {
+                Role = "assistant",
+                Message = $"I hit an issue: {ex.Message}. Check your connection mode and endpoint."
+            });
+        }
+        finally
+        {
+            isSending = false;
+        }
+    }
+
+    private async Task<bool> TryHandleSystemCommandAsync(string text)
+    {
+        var normalized = text.Trim().ToLowerInvariant();
+
+        if (normalized is "/status" or "status" or "health")
+        {
+            await RefreshStatus();
+            var summary = $"Server: {(serverOnline ? "Online" : "Offline")}, Model: {(ollamaOnline ? "Ready" : "Unavailable")}. {connectionDetail}";
+            AddAssistantMessage(summary);
+            return true;
+        }
+
+        if (normalized is "/update" or "check update" or "check updates")
+        {
+            await CheckUpdatesInternal(userInitiated: true);
+            AddAssistantMessage(string.IsNullOrWhiteSpace(updateMessage)
+                ? "No update information available right now."
+                : updateMessage);
+            return true;
+        }
+
+        if (normalized is "/update install" or "install update" or "update now")
+        {
+            if (!updateAvailable)
+            {
+                await CheckUpdatesInternal(userInitiated: true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(updateDownloadUrl))
+            {
+                await OpenUpdateUrl();
+                AddAssistantMessage("Opened update download link. Install the APK to complete the update.");
+            }
+            else
+            {
+                AddAssistantMessage("No update download URL is configured yet on the server.");
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private void AddAssistantMessage(string message)
+    {
+        messages.Add(new ChatMessage
+        {
+            Role = "assistant",
+            Message = message
+        });
+    }
+
+    private async Task LoadHistoryAsync()
+    {
+        var saved = await StorageService.LoadAsync<List<ChatMessage>>(HistoryKey);
+        if (saved != null && saved.Count > 0)
+        {
+            messages.Clear();
+            messages.AddRange(saved.TakeLast(100));
+        }
+    }
+
+    private async Task LoadConnectionAsync()
+    {
+        var saved = await StorageService.LoadAsync<ConnectionSettings>(ConnectionKey);
+        if (saved == null)
+            return;
+
+        connectionMode = saved.Mode;
+        endpoint = saved.Endpoint;
+    }
+
+    private async Task SaveConnectionAsync()
+    {
+        await StorageService.SaveAsync(ConnectionKey, new ConnectionSettings
+        {
+            Mode = connectionMode,
+            Endpoint = endpoint
+        });
+    }
+
+    private async Task LoadUpdatePreferencesAsync()
+    {
+        var saved = await StorageService.LoadAsync<UpdatePreferences>(UpdatePrefsKey);
+        if (saved == null)
+            return;
+
+        ignoredOptionalBuild = saved.IgnoredOptionalBuild;
+        ignoredOptionalDateUtc = saved.IgnoredOptionalDateUtc;
+
+        if (ignoredOptionalDateUtc?.Date != DateTime.UtcNow.Date)
+        {
+            ignoredOptionalBuild = 0;
+            ignoredOptionalDateUtc = null;
+            await SaveUpdatePreferencesAsync();
+        }
+    }
+
+    private async Task SaveUpdatePreferencesAsync()
+    {
+        await StorageService.SaveAsync(UpdatePrefsKey, new UpdatePreferences
+        {
+            IgnoredOptionalBuild = ignoredOptionalBuild,
+            IgnoredOptionalDateUtc = ignoredOptionalDateUtc
+        });
+    }
+
+    private async Task SaveHistoryAsync()
+    {
+        await StorageService.SaveAsync(HistoryKey, messages.TakeLast(100).ToList());
+    }
+
+    private async Task ClearChat()
+    {
+        messages.Clear();
+        messages.Add(new ChatMessage
+        {
+            Role = "assistant",
+            Message = "Conversation memory reset. ARIA is ready for a fresh start."
+        });
+
+        await SaveHistoryAsync();
+    }
+
+    private class ConnectionSettings
+    {
+        public string Mode { get; set; } = "RemoteServer";
+        public string Endpoint { get; set; } = string.Empty;
+    }
+
+    private class UpdatePreferences
+    {
+        public int IgnoredOptionalBuild { get; set; }
+        public DateTime? IgnoredOptionalDateUtc { get; set; }
+    }
+
+    private bool IsOptionalUpdateIgnoredToday(int build)
+    {
+        return ignoredOptionalBuild == build && ignoredOptionalDateUtc?.Date == DateTime.UtcNow.Date;
+    }
+
+    private string GetLastCheckedText()
+    {
+        if (!lastUpdateCheckUtc.HasValue)
+            return "never";
+
+        var elapsed = DateTime.UtcNow - lastUpdateCheckUtc.Value;
+        if (elapsed.TotalMinutes < 1)
+            return "just now";
+
+        if (elapsed.TotalMinutes < 60)
+            return $"{Math.Floor(elapsed.TotalMinutes)} min ago";
+
+        return $"{Math.Floor(elapsed.TotalHours)} hr ago";
+    }
+
+    private void StartPeriodicUpdateChecks()
+    {
+        updateCheckTimer?.Dispose();
+        updateCheckTimer = new System.Threading.Timer(_ =>
+        {
+            _ = InvokeAsync(async () =>
+            {
+                await CheckUpdatesInternal(userInitiated: false);
+                StateHasChanged();
+            });
+        }, null, UpdateCheckInitialDelay, UpdateCheckInterval);
+    }
+
+    public void Dispose()
+    {
+        updateCheckTimer?.Dispose();
+    }
+}

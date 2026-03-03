@@ -1,0 +1,182 @@
+/* Feedback Comment Modal Styles */
+
+.feedback-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+}
+
+.feedback-modal-content {
+    background: linear-gradient(135deg, #111126, #161633);
+    border: 1px solid #ff2d7b44;
+    border-radius: 4px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 45, 123, 0.3);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #1a1a3e;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #e8f0fe;
+}
+
+.modal-close {
+    background: transparent;
+    border: none;
+    color: #5a6988;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: #ff2d7b;
+}
+
+.modal-body {
+    padding: 20px;
+    flex: 1;
+}
+
+.modal-rating {
+    margin: 0 0 15px 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.9rem;
+    color: #c8d6e5;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.star-display {
+    font-size: 1.2em;
+    display: inline-block;
+}
+
+.modal-textarea {
+    width: 100%;
+    background: #0a0a0f;
+    border: 1px solid #1a1a3e;
+    color: #c8d6e5;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.95rem;
+    padding: 12px;
+    border-radius: 2px;
+    resize: vertical;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    line-height: 1.5;
+}
+
+.modal-textarea::placeholder {
+    color: #3a4560;
+}
+
+.modal-textarea:focus {
+    outline: none;
+    border-color: #ff2d7b;
+    box-shadow: 0 0 8px rgba(255, 45, 123, 0.2), inset 0 0 8px rgba(255, 45, 123, 0.05);
+}
+
+.char-count {
+    margin: 8px 0 0 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    color: #3a4560;
+    text-align: right;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    padding: 20px;
+    border-top: 1px solid #1a1a3e;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.modal-btn {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #ff2d7b44;
+    border-radius: 2px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.modal-btn-submit {
+    background: linear-gradient(135deg, rgba(255, 45, 123, 0.2), rgba(255, 45, 123, 0.1));
+    color: #ff2d7b;
+    border-color: #ff2d7b;
+}
+
+.modal-btn-submit:hover {
+    background: linear-gradient(135deg, rgba(255, 45, 123, 0.3), rgba(255, 45, 123, 0.2));
+    box-shadow: 0 0 12px rgba(255, 45, 123, 0.3);
+    transform: translateY(-2px);
+}
+
+.modal-btn-skip {
+    background: transparent;
+    color: #5a6988;
+    border-color: #1a1a3e;
+}
+
+.modal-btn-skip:hover {
+    background: rgba(255, 45, 123, 0.05);
+    border-color: #5a6988;
+    color: #c8d6e5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .feedback-modal-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-actions {
+        padding: 15px;
+    }
+    
+    .modal-actions {
+        flex-direction: column;
+    }
+}

@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="AutoPC/AutoPC.Client/AutoPC.Client.csproj" />
   <Project Path="AutoPC/AutoPC/AutoPC.csproj" />
+  <Project Path="AutoPC/AutoPC.Mobile/AutoPC.Mobile.csproj" />
 </Solution>

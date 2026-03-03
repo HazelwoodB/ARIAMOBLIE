@@ -21,7 +21,7 @@ public static class DatabaseExtensions
         catch (Exception ex)
         {
             Console.WriteLine($"Database initialization error: {ex.Message}");
-            throw;
+            Console.WriteLine("WARNING: Server will continue without database. Chat history sync will be unavailable.");
         }
     }
 
@@ -41,7 +41,7 @@ public static class DatabaseExtensions
         catch (Exception ex)
         {
             Console.WriteLine($"Database initialization error: {ex.Message}");
-            throw;
+            Console.WriteLine("WARNING: Server will continue without database. Chat history sync will be unavailable.");
         }
     }
 }

@@ -8,6 +8,7 @@
 @inject UserProfileService UserProfileService
 @inject PreferenceManager PreferenceManager
 @inject FeedbackCollector FeedbackCollector
+@inject FeedbackLearningService FeedbackLearning
 @inject EmotionRecognitionService EmotionService
 @inject PersonalityEngine PersonalityEngine
 @inject ConversationalMemoryService MemoryService
@@ -25,6 +26,9 @@
 
 <!-- WandaVision Reality Effects -->
 <WandaVisionEffects @ref="wandaEffects" />
+
+<!-- PWA Install Prompt (mobile) -->
+<PwaInstallPrompt />
 
 <link rel="stylesheet" href="wandavision-effects.css" />
 
@@ -236,6 +240,10 @@
             // Initialize feedback collector
             await FeedbackCollector.InitializeAsync();
             
+            // Initialize feedback learning service
+            await FeedbackLearning.InitializeAsync();
+            Console.WriteLine($"[Foundation] Learning score: {FeedbackLearning.GetLearningScore()}%");
+            
             foundationServicesInitialized = true;
             Console.WriteLine("[Foundation] All foundation services initialized");
         }
@@ -369,6 +377,14 @@
             var humanSystemPrompt = NaturalnessEngine.GenerateHumanLikeSystemPrompt(emotionAnalysis, currentTheme.Name);
             var contextSummary = await MemoryService.GenerateContextSummaryAsync();
             Console.WriteLine($"[ARIA 3.0] Human-like system prompt generated for theme: {currentTheme.Name}");
+
+            // === FEEDBACK LEARNING: Enhance prompt with learned user preferences ===
+            var feedbackAdjustment = FeedbackLearning.GeneratePromptAdjustment();
+            if (!string.IsNullOrEmpty(feedbackAdjustment))
+            {
+                humanSystemPrompt = humanSystemPrompt + "\n" + feedbackAdjustment;
+                Console.WriteLine($"[ARIA 3.0] Feedback learning applied: {feedbackAdjustment.Length} chars of prompt adjustment");
+            }
 
             // Add greeting if this is first message
             var preferences = PreferenceManager.GetCurrentPreferences();
@@ -613,9 +629,10 @@
                     wandaEffects.ShowApplause();
                 }
                 
-                // Persist and refresh stats
-                await PersistFeedbackAsync();
+                // === FEEDBACK LEARNING: Process feedback for LLM improvement ===
+                await ProcessFeedbackForLearningAsync(messageId, rating, comment);
                 
+                // Refresh stats display
                 if (statsComponent != null)
                 {
                     await statsComponent.RefreshStats();
@@ -689,20 +706,108 @@
     }
 
     /// <summary>
-    /// Persist feedback to localStorage
-    /// Step 3: Storage persistence (ready for enhancement)
+    /// Process feedback through the learning service to improve future LLM responses.
+    /// Finds the user query and assistant response for the rated message,
+    /// then feeds them into the learning pipeline AND syncs to the server for
+    /// durable storage and server-side ML retraining.
     /// </summary>
-    private async Task PersistFeedbackAsync()
+    private async Task ProcessFeedbackForLearningAsync(Guid messageId, int rating, string? comment)
     {
         try
         {
-            Console.WriteLine("[Storage] Persisting feedback to localStorage");
-            // TODO: Implement full localStorage persistence with IJSInterop
-            await Task.CompletedTask;
+            Console.WriteLine("[Learning] Processing feedback for LLM improvement");
+            
+            // Find the rated assistant message and the user message that prompted it
+            string userMessage = string.Empty;
+            string assistantResponse = string.Empty;
+            string? detectedSentiment = null;
+            float? sentimentScore = null;
+            
+            if (history != null)
+            {
+                for (int i = 0; i < history.Count; i++)
+                {
+                    if (history[i].Id == messageId && history[i].Role == "assistant")
+                    {
+                        assistantResponse = history[i].Message;
+                        // Find the preceding user message
+                        if (i > 0 && history[i - 1].Role == "user")
+                        {
+                            userMessage = history[i - 1].Message;
+                            detectedSentiment = history[i - 1].Sentiment;
+                            sentimentScore = history[i - 1].Score;
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            if (!string.IsNullOrEmpty(assistantResponse))
+            {
+                // 1. Client-side learning (prompt adjustment)
+                await FeedbackLearning.ProcessFeedbackAsync(
+                    messageId, rating, comment,
+                    userMessage, assistantResponse);
+                
+                var summary = FeedbackLearning.GetLearningSummary();
+                Console.WriteLine($"[Learning] Learning score: {summary.LearningScore}%, Total processed: {summary.TotalFeedbackProcessed}");
+                
+                // 2. Server-side sync (database persistence + ML retraining)
+                await SyncFeedbackToServerAsync(messageId, rating, comment, userMessage, assistantResponse, detectedSentiment, sentimentScore);
+            }
+            else
+            {
+                Console.WriteLine("[Learning] Could not find rated message in history");
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Storage] Error persisting feedback: {ex.Message}");
+            Console.WriteLine($"[Learning] Error processing feedback: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Sync feedback to the server for durable SQL storage and ML model retraining.
+    /// </summary>
+    private async Task SyncFeedbackToServerAsync(
+        Guid messageId, int rating, string? comment,
+        string userQuery, string assistantResponse,
+        string? sentiment, float? sentimentScore)
+    {
+        try
+        {
+            var userId = currentUserProfile?.Id ?? Guid.Empty;
+            var payload = new
+            {
+                userId,
+                messageId,
+                rating,
+                comment,
+                tags = new[] { rating >= 4 ? "helpful" : rating <= 2 ? "needs-improvement" : "adequate" },
+                userQuery,
+                assistantResponse,
+                detectedSentiment = sentiment,
+                sentimentScore
+            };
+
+            var json = JsonSerializer.Serialize(payload, JsonOptions);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await Http.PostAsync("/api/feedback/submit", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("[Feedback] Synced to server successfully");
+            }
+            else
+            {
+                Console.WriteLine($"[Feedback] Server sync failed: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Non-fatal: client-side learning still works even if server sync fails
+            Console.WriteLine($"[Feedback] Server sync error (non-fatal): {ex.Message}");
         }
     }
 

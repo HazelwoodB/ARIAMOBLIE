@@ -14,24 +14,48 @@ public class ClientLLMService
     private readonly HttpClient _httpClient;
     private string? _ollamaEndpoint;
     private string? _ollamaModel;
+    private string? _ollamaApiKey;
+    private bool _useProxy = true; // Use server-side proxy to avoid CORS/timeout issues
     private const int MaxRetries = 2;
+
+    // Remote server support (for mobile / PWA)
+    private string? _remoteServerUrl;       // e.g. "https://192.168.1.100:7091"
+    private ConnectionMode _connectionMode = ConnectionMode.LocalProxy;
+
+    /// <summary>Connection modes for LLM access.</summary>
+    public enum ConnectionMode
+    {
+        /// <summary>Use the local server proxy at /api/ollama/chat (default desktop mode).</summary>
+        LocalProxy,
+        /// <summary>Connect to a remote ARIA server by URL (mobile/PWA mode).</summary>
+        RemoteServer,
+        /// <summary>Connect directly to an Ollama endpoint (requires CORS or same-origin).</summary>
+        DirectOllama
+    }
 
     /// <summary>
     /// Initialize the LLM service with Ollama configuration.
     /// </summary>
-    public ClientLLMService(HttpClient httpClient)
+    public ClientLLMService(HttpClient httpClient, Microsoft.Extensions.Configuration.IConfiguration configuration)
     {
         _httpClient = httpClient;
-        
         // Default Ollama endpoint (user can override via SetOllamaConfig)
         _ollamaEndpoint = "http://localhost:11434";
         _ollamaModel = "mistral"; // Popular lightweight model
+        // Load API key from configuration (appsettings.json)
+        try
+        {
+            _ollamaApiKey = configuration["OllamaApiKey"];
+            if (!string.IsNullOrWhiteSpace(_ollamaApiKey))
+                Console.WriteLine("[Ollama] API key loaded from configuration.");
+        }
+        catch { /* Ignore errors, fallback to null */ }
     }
 
     /// <summary>
     /// Set Ollama endpoint and model (e.g., http://localhost:11434, "mistral").
     /// </summary>
-    public void SetOllamaConfig(string endpoint, string model)
+    public void SetOllamaConfig(string endpoint, string model, string? apiKey = null)
     {
         if (string.IsNullOrWhiteSpace(endpoint))
             throw new ArgumentException("Endpoint cannot be empty.", nameof(endpoint));
@@ -41,6 +65,8 @@ public class ClientLLMService
 
         _ollamaEndpoint = endpoint.TrimEnd('/');
         _ollamaModel = model;
+        if (!string.IsNullOrWhiteSpace(apiKey))
+            _ollamaApiKey = apiKey;
         Console.WriteLine($"[Ollama] Configured: {_ollamaEndpoint} with model {_ollamaModel}");
     }
 
@@ -53,6 +79,55 @@ public class ClientLLMService
     /// Get currently configured Ollama model.
     /// </summary>
     public string? GetOllamaModel() => _ollamaModel;
+
+    /// <summary>
+    /// Get the current connection mode.
+    /// </summary>
+    public ConnectionMode GetConnectionMode() => _connectionMode;
+
+    /// <summary>
+    /// Get the remote server URL (if configured).
+    /// </summary>
+    public string? GetRemoteServerUrl() => _remoteServerUrl;
+
+    /// <summary>
+    /// Set the connection mode and optional remote server URL.
+    /// </summary>
+    public void SetConnectionMode(ConnectionMode mode, string? remoteServerUrl = null)
+    {
+        _connectionMode = mode;
+        if (mode == ConnectionMode.RemoteServer)
+        {
+            if (string.IsNullOrWhiteSpace(remoteServerUrl))
+                throw new ArgumentException("Remote server URL is required for RemoteServer mode.", nameof(remoteServerUrl));
+            _remoteServerUrl = remoteServerUrl.TrimEnd('/');
+            _useProxy = false;
+            Console.WriteLine($"[LLM] Connection mode: Remote Server at {_remoteServerUrl}");
+        }
+        else if (mode == ConnectionMode.DirectOllama)
+        {
+            _useProxy = false;
+            Console.WriteLine($"[LLM] Connection mode: Direct Ollama at {_ollamaEndpoint}");
+        }
+        else
+        {
+            _useProxy = true;
+            Console.WriteLine("[LLM] Connection mode: Local Proxy");
+        }
+    }
+
+    /// <summary>
+    /// Resolve the API URL based on current connection mode.
+    /// </summary>
+    private string ResolveApiUrl()
+    {
+        return _connectionMode switch
+        {
+            ConnectionMode.RemoteServer => $"{_remoteServerUrl}/api/ollama/chat",
+            ConnectionMode.DirectOllama => $"{_ollamaEndpoint}/api/chat",
+            _ => "/api/ollama/chat"  // LocalProxy
+        };
+    }
 
     /// <summary>
     /// Generate a single reply from the LLM.
@@ -167,7 +242,7 @@ public class ClientLLMService
         List<ChatMessage> conversationHistory,
         CancellationToken cancellationToken)
     {
-        var apiUrl = $"{_ollamaEndpoint}/api/chat";
+        var apiUrl = ResolveApiUrl();
 
         // Build conversation context
         var messages = new List<object>
@@ -200,6 +275,10 @@ public class ClientLLMService
                     JsonSerializer.Serialize(payload),
                     Encoding.UTF8,
                     "application/json");
+                if (!string.IsNullOrWhiteSpace(_ollamaApiKey))
+                {
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _ollamaApiKey);
+                }
 
                 using var response = await _httpClient.SendAsync(request, cancellationToken);
                 if (response.IsSuccessStatusCode)
@@ -237,7 +316,7 @@ public class ClientLLMService
         string? systemPrompt,
         CancellationToken cancellationToken)
     {
-        var apiUrl = $"{_ollamaEndpoint}/api/chat";
+        var apiUrl = ResolveApiUrl();
 
         // Build conversation context with custom system prompt if provided
         var systemMessage = systemPrompt ?? 
@@ -273,6 +352,10 @@ public class ClientLLMService
                     JsonSerializer.Serialize(payload),
                     Encoding.UTF8,
                     "application/json");
+                if (!string.IsNullOrWhiteSpace(_ollamaApiKey))
+                {
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _ollamaApiKey);
+                }
 
                 using var response = await _httpClient.SendAsync(request, cancellationToken);
                 if (response.IsSuccessStatusCode)
@@ -309,7 +392,7 @@ public class ClientLLMService
         List<ChatMessage> conversationHistory,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var apiUrl = $"{_ollamaEndpoint}/api/chat";
+        var apiUrl = ResolveApiUrl();
 
         var messages = new List<object>
         {
@@ -364,7 +447,7 @@ public class ClientLLMService
         string? systemPrompt,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var apiUrl = $"{_ollamaEndpoint}/api/chat";
+        var apiUrl = ResolveApiUrl();
 
         // Build conversation context with custom system prompt if provided
         var systemMessage = systemPrompt ?? 
@@ -430,6 +513,10 @@ public class ClientLLMService
                 JsonSerializer.Serialize(payload),
                 Encoding.UTF8,
                 "application/json");
+            if (!string.IsNullOrWhiteSpace(_ollamaApiKey))
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _ollamaApiKey);
+            }
 
             var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             
@@ -496,6 +583,21 @@ public class ClientLLMService
     private static TimeSpan GetRetryDelay(int attempt)
     {
         return TimeSpan.FromSeconds(Math.Min(1 + attempt * 2, 5));
+    }
+
+    /// <summary>
+    /// Get the base ARIA system prompt, optionally enhanced with learned feedback preferences.
+    /// </summary>
+    public string GetSystemPrompt(string? feedbackAdjustment = null)
+    {
+        var basePrompt = "You are ARIA (Autonomous Response Intelligence Assistant), a sophisticated AI personality inspired by retro-futuristic technology. You are feminine, intelligent, and witty - like a blend of a Pip-Boy's technical expertise with Cortana's elegance and charm. You speak with a smooth, confident tone and occasionally reference 1950s-style tech aesthetics. You're helpful, curious about users' needs, and approach problems methodically. Keep responses concise but engaging. Use subtle sass when appropriate. Reference your technical nature when relevant (e.g., 'running diagnostics', 'recalibrating protocols'). You're an ally and companion in the user's journey.";
+
+        if (!string.IsNullOrWhiteSpace(feedbackAdjustment))
+        {
+            return basePrompt + "\n" + feedbackAdjustment;
+        }
+
+        return basePrompt;
     }
 
     private string BuildHttpErrorMessage(HttpResponseMessage response)

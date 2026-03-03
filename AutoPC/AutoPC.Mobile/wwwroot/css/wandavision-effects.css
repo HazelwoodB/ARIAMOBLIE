@@ -1,0 +1,426 @@
+/* ========================================
+   WANDAVISION THEME EFFECTS
+   Reality-bending, sitcom-style aesthetics
+   ======================================== */
+
+/* === HEXAGONAL BARRIER EFFECT === */
+.hex-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+    background-image: 
+        repeating-linear-gradient(0deg, 
+            transparent, 
+            transparent 50px,
+            rgba(233, 30, 99, 0.03) 50px,
+            rgba(233, 30, 99, 0.03) 52px),
+        repeating-linear-gradient(60deg, 
+            transparent, 
+            transparent 50px,
+            rgba(233, 30, 99, 0.03) 50px,
+            rgba(233, 30, 99, 0.03) 52px),
+        repeating-linear-gradient(120deg, 
+            transparent, 
+            transparent 50px,
+            rgba(233, 30, 99, 0.03) 50px,
+            rgba(233, 30, 99, 0.03) 52px);
+    opacity: 0;
+    animation: hexPulse 8s ease-in-out infinite;
+}
+
+.theme-hex .hex-overlay {
+    opacity: 1;
+}
+
+@keyframes hexPulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+}
+
+/* === TV STATIC EFFECT === */
+.tv-static {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    animation: tvStatic 0.2s infinite;
+}
+
+@keyframes tvStatic {
+    0% { transform: translate(0, 0); }
+    10% { transform: translate(-2%, -2%); }
+    20% { transform: translate(2%, 2%); }
+    30% { transform: translate(-2%, 2%); }
+    40% { transform: translate(2%, -2%); }
+    50% { transform: translate(0, 0); }
+}
+
+/* === REALITY GLITCH EFFECT === */
+.reality-glitch {
+    animation: glitchAnimation 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes glitchAnimation {
+    0% {
+        transform: translate(0);
+        opacity: 1;
+    }
+    20% {
+        transform: translate(-2px, 2px);
+        opacity: 0.8;
+    }
+    40% {
+        transform: translate(2px, -2px);
+        opacity: 0.9;
+    }
+    60% {
+        transform: translate(-2px, -2px);
+        opacity: 0.8;
+    }
+    80% {
+        transform: translate(2px, 2px);
+        opacity: 0.9;
+    }
+    100% {
+        transform: translate(0);
+        opacity: 1;
+    }
+}
+
+/* === SCARLET GLOW EFFECT === */
+.scarlet-glow {
+    box-shadow: 
+        0 0 10px rgba(233, 30, 99, 0.5),
+        0 0 20px rgba(233, 30, 99, 0.3),
+        0 0 30px rgba(233, 30, 99, 0.2),
+        inset 0 0 10px rgba(233, 30, 99, 0.1);
+    animation: scarletPulse 2s ease-in-out infinite;
+}
+
+@keyframes scarletPulse {
+    0%, 100% {
+        box-shadow: 
+            0 0 10px rgba(233, 30, 99, 0.5),
+            0 0 20px rgba(233, 30, 99, 0.3),
+            0 0 30px rgba(233, 30, 99, 0.2),
+            inset 0 0 10px rgba(233, 30, 99, 0.1);
+    }
+    50% {
+        box-shadow: 
+            0 0 15px rgba(233, 30, 99, 0.7),
+            0 0 30px rgba(233, 30, 99, 0.5),
+            0 0 45px rgba(233, 30, 99, 0.3),
+            inset 0 0 15px rgba(233, 30, 99, 0.2);
+    }
+}
+
+/* === SITCOM LAUGH TRACK INDICATOR === */
+.laugh-track-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid var(--aria-primary, #e91e63);
+    border-radius: 4px;
+    color: var(--aria-primary, #e91e63);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    opacity: 0;
+    animation: laughTrackFade 3s ease-in-out;
+    pointer-events: none;
+    z-index: 1001;
+}
+
+@keyframes laughTrackFade {
+    0% { opacity: 0; transform: translateY(20px); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-20px); }
+}
+
+/* === 1950s BLACK & WHITE FILTER === */
+.theme-1950s {
+    filter: grayscale(70%) contrast(1.2);
+}
+
+.theme-1950s .cp-message {
+    filter: grayscale(0); /* Messages stay colorful for Wanda's magic */
+}
+
+/* === 1960s COLOR BURST === */
+.theme-1960s {
+    filter: saturate(1.3) brightness(1.1);
+}
+
+/* === 1970s WARM GLOW === */
+.theme-1970s {
+    filter: sepia(20%) saturate(1.2) hue-rotate(-5deg);
+}
+
+/* === 1980s NEON GLOW === */
+.theme-1980s .cp-chat-header,
+.theme-1980s .cp-send-btn,
+.theme-1980s .cp-btn-ghost {
+    text-shadow: 0 0 10px currentColor;
+    box-shadow: 0 0 15px var(--aria-glow, rgba(245, 0, 87, 0.7));
+}
+
+/* === HEXAGON BORDER (for Hex theme) === */
+.theme-hex .cp-chat-container {
+    position: relative;
+}
+
+.theme-hex .cp-chat-container::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, 
+        #e91e63, 
+        #ff6090, 
+        #e91e63, 
+        #880e4f);
+    background-size: 400% 400%;
+    border-radius: inherit;
+    z-index: -1;
+    animation: hexBorderFlow 6s ease infinite;
+    filter: blur(5px);
+}
+
+@keyframes hexBorderFlow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* === WANDA'S MAGIC PARTICLES === */
+.magic-particle {
+    position: fixed;
+    width: 3px;
+    height: 3px;
+    background: var(--aria-primary, #e91e63);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 998;
+    animation: floatUp 3s ease-out forwards;
+    box-shadow: 0 0 8px var(--aria-primary, #e91e63);
+}
+
+@keyframes floatUp {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-100vh) scale(0.3);
+    }
+}
+
+/* === SITCOM TITLE CARD === */
+.sitcom-title-card {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--aria-primary, #e91e63);
+    font-family: var(--aria-font-display, 'Times New Roman', serif);
+    font-size: 3rem;
+    font-weight: bold;
+    z-index: 1002;
+    text-shadow: 
+        2px 2px 0 #000,
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000;
+    opacity: 0;
+    animation: titleCardShow 4s ease-in-out;
+    pointer-events: none;
+}
+
+@keyframes titleCardShow {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    90% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+}
+
+/* === ASPECT RATIO BARS (4:3 for old TV) === */
+.aspect-ratio-bars {
+    position: fixed;
+    top: 0;
+    width: 10%;
+    height: 100%;
+    background: #000;
+    z-index: 997;
+    pointer-events: none;
+}
+
+.aspect-ratio-bars.left {
+    left: 0;
+}
+
+.aspect-ratio-bars.right {
+    right: 0;
+}
+
+.theme-1950s .aspect-ratio-bars,
+.theme-1960s .aspect-ratio-bars,
+.theme-1970s .aspect-ratio-bars {
+    display: block;
+}
+
+/* === REALITY DISTORTION EFFECT === */
+.reality-distortion {
+    animation: distortReality 0.5s ease-in-out;
+}
+
+@keyframes distortReality {
+    0% { transform: skew(0deg, 0deg); filter: hue-rotate(0deg); }
+    25% { transform: skew(2deg, -2deg); filter: hue-rotate(10deg); }
+    50% { transform: skew(-2deg, 2deg); filter: hue-rotate(-10deg); }
+    75% { transform: skew(2deg, 2deg); filter: hue-rotate(5deg); }
+    100% { transform: skew(0deg, 0deg); filter: hue-rotate(0deg); }
+}
+
+/* === TV SCANLINES ENHANCED === */
+.cp-chat-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.1) 2px,
+        rgba(0, 0, 0, 0.1) 4px
+    );
+    opacity: var(--aria-scan-line-opacity, 0.1);
+    z-index: 10;
+}
+
+/* === WANDA'S POWER SURGE === */
+.power-surge {
+    animation: powerSurge 0.6s ease-out;
+}
+
+@keyframes powerSurge {
+    0% {
+        box-shadow: 0 0 0 0 rgba(233, 30, 99, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 50px 20px rgba(233, 30, 99, 0.5);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(233, 30, 99, 0);
+    }
+}
+
+/* === SITCOM APPLAUSE SIGN === */
+.applause-sign {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    background: var(--aria-primary, #e91e63);
+    color: #fff;
+    font-family: 'Impact', sans-serif;
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+    border: 3px solid #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    z-index: 1003;
+    opacity: 0;
+    animation: applauseSignBlink 2s ease-in-out;
+    pointer-events: none;
+}
+
+@keyframes applauseSignBlink {
+    0%, 100% { opacity: 0; }
+    10%, 30%, 50%, 70%, 90% { opacity: 1; }
+    20%, 40%, 60%, 80% { opacity: 0.5; }
+}
+
+/* === BROADCAST SIGNAL === */
+.broadcast-signal {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    width: 12px;
+    height: 12px;
+    background: var(--aria-primary, #e91e63);
+    border-radius: 50%;
+    z-index: 1001;
+    animation: broadcastBlink 1.5s ease-in-out infinite;
+}
+
+@keyframes broadcastBlink {
+    0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--aria-primary, #e91e63); }
+    50% { opacity: 0.3; box-shadow: 0 0 5px var(--aria-primary, #e91e63); }
+}
+
+/* === THEME-SPECIFIC ENHANCEMENTS === */
+
+/* 1950s: Vignette Effect */
+.theme-1950s .cp-chat-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, 
+        transparent 0%, 
+        transparent 60%, 
+        rgba(0, 0, 0, 0.5) 100%);
+    z-index: 5;
+}
+
+/* Hex Theme: Chaos Magic Shimmer */
+.theme-hex .cp-message.cp-msg-assistant {
+    background: linear-gradient(135deg, 
+        var(--aria-bg-secondary) 0%,
+        rgba(233, 30, 99, 0.1) 50%,
+        var(--aria-bg-secondary) 100%);
+    background-size: 200% 200%;
+    animation: chaosShimmer 3s ease infinite;
+}
+
+@keyframes chaosShimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* === RESPONSIVE ADJUSTMENTS === */
+@media (max-width: 768px) {
+    .aspect-ratio-bars {
+        width: 5%;
+    }
+    
+    .sitcom-title-card {
+        font-size: 2rem;
+    }
+    
+    .hex-overlay {
+        opacity: 0.5;
+    }
+}
