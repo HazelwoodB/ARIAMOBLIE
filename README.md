@@ -6,6 +6,7 @@
 
 - Start server: `./Launch-ARIA-Server.ps1`
 - Stop server: `./Stop-ARIA-Server.ps1`
+- One-click start + system checks: `./One-Click-ARIA.bat`
 
 The start script:
 
@@ -17,3 +18,13 @@ The start script:
 
 - Browser client build: `dotnet build AutoPC/AutoPC.Client/AutoPC.Client.csproj -c Debug`
 - Android client build: `dotnet build AutoPC/AutoPC.Mobile/AutoPC.Mobile.csproj -f net10.0-android -c Release`
+
+## One-click workflow
+
+Double-click `One-Click-ARIA.bat` to:
+
+- Stop stale server processes.
+- Start ARIA server on LAN-friendly URLs.
+- Validate: `/api/test`, `/api/ollama/health`, `/api/mobile/update`, and `/chat`.
+- Open `https://localhost:7091/chat` only when checks pass.
+- Write results to `aria-health-summary.txt`.
