@@ -15,7 +15,6 @@ public class ClientLLMService
     private string? _ollamaEndpoint;
     private string? _ollamaModel;
     private string? _ollamaApiKey;
-    private bool _useProxy = true; // Use server-side proxy to avoid CORS/timeout issues
     private const int MaxRetries = 2;
 
     // Remote server support (for mobile / PWA)
@@ -101,17 +100,14 @@ public class ClientLLMService
             if (string.IsNullOrWhiteSpace(remoteServerUrl))
                 throw new ArgumentException("Remote server URL is required for RemoteServer mode.", nameof(remoteServerUrl));
             _remoteServerUrl = remoteServerUrl.TrimEnd('/');
-            _useProxy = false;
             Console.WriteLine($"[LLM] Connection mode: Remote Server at {_remoteServerUrl}");
         }
         else if (mode == ConnectionMode.DirectOllama)
         {
-            _useProxy = false;
             Console.WriteLine($"[LLM] Connection mode: Direct Ollama at {_ollamaEndpoint}");
         }
         else
         {
-            _useProxy = true;
             Console.WriteLine("[LLM] Connection mode: Local Proxy");
         }
     }
@@ -300,7 +296,7 @@ public class ClientLLMService
 
                 return BuildHttpErrorMessage(response);
             }
-            catch (HttpRequestException ex) when (attempt < MaxRetries)
+            catch (HttpRequestException) when (attempt < MaxRetries)
             {
                 await Task.Delay(GetRetryDelay(attempt), cancellationToken);
                 continue;
@@ -377,7 +373,7 @@ public class ClientLLMService
 
                 return BuildHttpErrorMessage(response);
             }
-            catch (HttpRequestException ex) when (attempt < MaxRetries)
+            catch (HttpRequestException) when (attempt < MaxRetries)
             {
                 await Task.Delay(GetRetryDelay(attempt), cancellationToken);
                 continue;

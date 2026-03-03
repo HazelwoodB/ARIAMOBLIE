@@ -253,6 +253,7 @@ public partial class Program
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[API] Error in /api/chat: {ex}");
                 return Results.StatusCode(500);
             }
         });
@@ -399,6 +400,7 @@ public partial class Program
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[API] Error in /api/predict: {ex}");
                 return Results.StatusCode(500);
             }
         });

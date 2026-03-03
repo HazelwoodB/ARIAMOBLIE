@@ -187,7 +187,9 @@ public class AssistantChatModel
 
         var avgUserSentiment = userMessages
             .Where(m => m.Score.HasValue)
-            .Average(m => m.Score.Value);
+            .Select(m => m.Score!.Value)
+            .DefaultIfEmpty(0f)
+            .Average();
 
         var positiveUserMessages = userMessages
             .Count(m => m.Sentiment == "Positive");

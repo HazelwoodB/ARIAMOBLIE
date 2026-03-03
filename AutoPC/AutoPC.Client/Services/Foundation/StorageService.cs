@@ -11,7 +11,6 @@ public class StorageService
 {
     private const string STORAGE_PREFIX = "ARIA_";
     private readonly IJSRuntime _jsRuntime;
-    private bool _jsReady = false;
 
     // In-memory fallback cache when JSInterop is not yet available (prerender)
     private readonly Dictionary<string, string> _memoryCache = new();
@@ -44,7 +43,6 @@ public class StorageService
             try
             {
                 await _jsRuntime.InvokeVoidAsync("localStorage.setItem", cancellationToken, storageKey, json);
-                _jsReady = true;
                 Console.WriteLine($"[Storage] Saved {key} ({json.Length} bytes) to localStorage");
             }
             catch (InvalidOperationException)
@@ -75,7 +73,6 @@ public class StorageService
             try
             {
                 json = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", cancellationToken, storageKey);
-                _jsReady = true;
             }
             catch (InvalidOperationException)
             {

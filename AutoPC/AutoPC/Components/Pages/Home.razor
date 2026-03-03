@@ -1,15 +1,21 @@
 ﻿@page "/"
+@inject NavigationManager Navigation
 
 <PageTitle>// AUTO_PC</PageTitle>
 
 <div style="padding: 2rem 0;">
     <h1>AUTO<span style="color: #ff2d7b; -webkit-text-fill-color: #ff2d7b;">PC</span></h1>
     <p style="font-family: 'Share Tech Mono', monospace; color: #5a6988; letter-spacing: 0.1em; margin-top: 0.5rem;">
-        // SYSTEM INITIALIZED — ALL MODULES OPERATIONAL
+        // REDIRECTING TO ASSISTANT...
     </p>
-    <div style="margin-top: 2rem; padding: 1rem; border: 1px solid #1a1a3e; background: #111126;">
-        <p style="font-family: 'Share Tech Mono', monospace; color: #00f0ff; font-size: 0.8rem;">
-            &gt; Navigate to <a href="chat" style="color: #ff2d7b;">ASSISTANT</a> to begin neural link session
-        </p>
-    </div>
 </div>
+
+@code {
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Navigation.NavigateTo("/chat", forceLoad: true);
+        }
+    }
+}

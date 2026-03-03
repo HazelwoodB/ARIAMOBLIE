@@ -181,7 +181,6 @@
 
     // Foundation service state
     private UserProfile? currentUserProfile;
-    private bool foundationServicesInitialized = false;
     
     // Modal and feedback state (Option A)
     private AutoPC.Client.Components.FeedbackCommentModal? feedbackModal;
@@ -244,13 +243,11 @@
             await FeedbackLearning.InitializeAsync();
             Console.WriteLine($"[Foundation] Learning score: {FeedbackLearning.GetLearningScore()}%");
             
-            foundationServicesInitialized = true;
             Console.WriteLine("[Foundation] All foundation services initialized");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[Foundation] Initialization error: {ex.Message}");
-            foundationServicesInitialized = false;
         }
     }
 
